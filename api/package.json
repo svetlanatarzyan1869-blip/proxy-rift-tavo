@@ -1,0 +1,9 @@
+{
+  "name": "rift-proxy",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Image generation proxy for RiftAI (gpt-image + gemini) with ImgBB upload and Redis cache",
+  "dependencies": {
+    "ioredis": "^5.3.2"
+  }
+}
