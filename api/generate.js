@@ -99,9 +99,7 @@ export default async function handler(req, res) {
     // ---------- Нормализация параметра data (исправление + и =) ----------
     if (req.query.data) {
       let raw = req.query.data;
-      // Заменяем пробелы на +
       raw = raw.replace(/ /g, '+');
-      // Восстанавливаем padding = для base64 (длина должна быть кратна 4)
       const parts = raw.split(':');
       if (parts.length === 2) {
         let encrypted = parts[1];
@@ -134,6 +132,17 @@ export default async function handler(req, res) {
       charactersRaw = req.query.characters;
       imgbb_key = req.query.imgbb_key;
       console.log('⚠️ [3/9] Используется незашифрованный запрос (устаревший)');
+    }
+
+    // ---- Декодируем параметр characters из URL (если он пришёл закодированным) ----
+    // (Этот блок нужен для случая, когда characters передаётся как URL-encoded строка)
+    if (charactersRaw && typeof charactersRaw === 'string' && (charactersRaw.includes('%') || charactersRaw.includes('+'))) {
+      try {
+        charactersRaw = decodeURIComponent(charactersRaw);
+        console.log('🔓 characters decoded');
+      } catch (e) {
+        console.warn('Failed to decode characters, using raw:', e.message);
+      }
     }
 
     // ---- Эти параметры всегда из URL (не секретные) ----
@@ -188,9 +197,9 @@ export default async function handler(req, res) {
         const locked = await redis.set(lockKey, 'locked', 'EX', 2, 'NX');
         if (locked) {
           lockAcquired = true;
-          console.log(`🔒 Блокировка получена для ${cacheKey}`);
+          console.log(`🔒 Блокировка получена`);
         } else {
-          console.log(`⏳ Ожидание блокировки для ${cacheKey}`);
+          console.log(`⏳ Ожидание блокировки`);
           await new Promise(resolve => setTimeout(resolve, 600));
           const retryCache = await redis.get(cacheKey);
           if (retryCache) {
@@ -215,10 +224,11 @@ export default async function handler(req, res) {
     let chars = [];
     try {
       chars = JSON.parse(charactersRaw || '[]');
+      console.log(`📸 [6/9] Референсов: ${chars.length}`);
     } catch (e) {
-      console.warn('Ошибка парсинга characters');
+      console.warn('Ошибка парсинга characters:', e.message);
+      chars = [];
     }
-    console.log(`📸 [6/9] Референсов: ${chars.length}`);
 
     // ---- Определяем стратегию по модели ----
     const isGptImage = model.startsWith('gpt-image');
@@ -238,7 +248,6 @@ export default async function handler(req, res) {
       form.append('n', '1');
       form.append('size', '1024x1024');
 
-      // Загружаем каждый референс и добавляем в форму
       for (const c of chars) {
         if (!c.url) continue;
         try {
@@ -269,7 +278,6 @@ export default async function handler(req, res) {
 
       console.log('✅ [7/9] RiftAI ответил');
 
-      // ---- ImgBB ----
       console.log('☁️ [8/9] Загрузка на ImgBB...');
       imageUrl = await uploadToImgBB(imgbb_key, b64);
 
@@ -318,7 +326,6 @@ export default async function handler(req, res) {
 
       const riftData = await riftRes.json();
 
-      // Извлекаем base64 из markdown data URL в content
       let b64 = riftData.data?.b64_json || riftData.b64_json || riftData.image;
       if (!b64 && riftData.choices?.[0]?.message?.content) {
         const match = riftData.choices[0].message.content.match(
@@ -330,14 +337,12 @@ export default async function handler(req, res) {
 
       console.log('✅ [7/9] RiftAI ответил');
 
-      // ---- ImgBB ----
       console.log('☁️ [8/9] Загрузка на ImgBB...');
       imageUrl = await uploadToImgBB(imgbb_key, b64);
     }
 
     console.log(`✅ [8/9] Изображение готово`);
 
-    // ---- Сохраняем в кэш и снимаем блокировку ----
     if (redis) {
       try {
         await redis.set(cacheKey, imageUrl, 'EX', 604800);
