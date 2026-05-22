@@ -5,6 +5,8 @@ import crypto from 'crypto';
 
 const require = createRequire(import.meta.url);
 
+export const maxDuration = 300;
+
 // ---------- Расшифровка с нормализацией base64 ----------
 function decryptData(encryptedBase64, secretKeyBase64) {
   try {
