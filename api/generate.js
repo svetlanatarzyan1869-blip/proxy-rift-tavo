@@ -95,6 +95,24 @@ export default async function handler(req, res) {
 
   try {
     console.log('🚀 [2/9] Начало запроса');
+
+    // ---------- Нормализация параметра data (исправление + и =) ----------
+    if (req.query.data) {
+      let raw = req.query.data;
+      // Заменяем пробелы на +
+      raw = raw.replace(/ /g, '+');
+      // Восстанавливаем padding = для base64 (длина должна быть кратна 4)
+      const parts = raw.split(':');
+      if (parts.length === 2) {
+        let encrypted = parts[1];
+        const missing = (4 - (encrypted.length % 4)) % 4;
+        if (missing) encrypted += '='.repeat(missing);
+        raw = parts[0] + ':' + encrypted;
+      }
+      req.query.data = raw;
+      console.log(`🔍 data normalized (preview): ${req.query.data.slice(0, 50)}...`);
+    }
+
     const encryptionKey = process.env.ENCRYPTION_KEY;
     let key, charactersRaw, imgbb_key;
 
