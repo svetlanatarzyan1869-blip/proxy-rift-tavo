@@ -1,3 +1,4 @@
+// api/generate.js — RiftAI proxy
 import Redis from 'ioredis';
 import { createRequire } from 'module';
 import crypto from 'crypto';
@@ -28,8 +29,9 @@ function decryptData(encryptedBase64, secretKeyBase64) {
 let styleMap = {};
 try {
   styleMap = require('./styles.json');
+  console.log(`✅ [1/9] Загружено стилей: ${Object.keys(styleMap).length}`);
 } catch (err) {
-  console.error('styles.json error:', err.message);
+  console.error('❌ [1/9] styles.json error:', err.message);
   styleMap = { kodak_portra_400: "Kodak Portra 400 film look" };
 }
 
@@ -101,12 +103,14 @@ export default async function handler(req, res) {
     const encryptionKey = process.env.ENCRYPTION_KEY;
     let key, charactersRaw, imgbb_key;
 
+    // ---- Получение параметров: key и imgbb_key из шифровки, characters из URL ----
     if (req.query.data && encryptionKey) {
       const decrypted = decryptData(req.query.data, encryptionKey);
       if (decrypted && typeof decrypted === 'object') {
         key = decrypted.key;
-        charactersRaw = decrypted.characters;
         imgbb_key = decrypted.imgbb_key;
+        // charactersRaw берём из URL, а не из расшифрованных данных
+        charactersRaw = req.query.characters;
         console.log('✅ [3/9] Данные расшифрованы');
       } else {
         console.error('❌ [3/9] Ошибка расшифровки');
@@ -119,13 +123,14 @@ export default async function handler(req, res) {
       console.log('⚠️ [3/9] Незашифрованный запрос');
     }
 
-    // Декодируем characters
-    if (charactersRaw && typeof charactersRaw === 'string' && (charactersRaw.includes('%') || charactersRaw.includes('+'))) {
+    // Декодируем characters, если пришёл в URL-encoded виде
+    if (charactersRaw && typeof charactersRaw === 'string' && charactersRaw.includes('%')) {
       try {
         charactersRaw = decodeURIComponent(charactersRaw);
         console.log('🔓 characters decoded');
       } catch (e) { console.warn('Decode failed', e.message); }
     }
+    console.log('🔍 charactersRaw:', charactersRaw);
 
     const userId = req.query.userId;
     const prompt = req.query.prompt;
@@ -154,6 +159,8 @@ export default async function handler(req, res) {
     }
 
     const fullPrompt = `${finalStyle}\n\n${prompt}`;
+
+    // ---- Кэш и блокировка ----
     const cacheKey = getCacheKey(userId, prompt, charactersRaw, finalStyle);
     let cachedUrl = null;
     let lockAcquired = false;
@@ -161,7 +168,7 @@ export default async function handler(req, res) {
 
     if (redis) {
       console.log('🔄 [5/9] Проверка кэша...');
-      try { cachedUrl = await redis.get(cacheKey); } catch(e) {}
+      try { cachedUrl = await redis.get(cacheKey); } catch(e) { console.warn('Redis error:', e.message); }
       if (!cachedUrl) {
         const locked = await redis.set(lockKey, 'locked', 'EX', 2, 'NX');
         if (locked) {
@@ -179,17 +186,20 @@ export default async function handler(req, res) {
     if (cachedUrl) return res.redirect(302, cachedUrl);
     console.log('❌ [5/9] Кэш промах, генерация');
 
-    // Референсы
+    // ---- Референсы ----
     let chars = [];
     try {
       chars = JSON.parse(charactersRaw || '[]');
       console.log(`📸 [6/9] Референсов: ${chars.length}`);
-    } catch(e) { console.warn('Ошибка парсинга characters'); }
+    } catch(e) {
+      console.warn('Ошибка парсинга characters:', e.message);
+    }
 
     const isGptImage = model.startsWith('gpt-image');
     let imageUrl;
 
     if (isGptImage) {
+      // GPT Image — /v1/images/edits
       console.log('🤖 [7/9] RiftAI images/edits...');
       const form = new FormData();
       form.append('model', model);
@@ -217,6 +227,7 @@ export default async function handler(req, res) {
       if (!b64) throw new Error('No image from RiftAI');
       imageUrl = await uploadToImgBB(imgbb_key, b64);
     } else {
+      // Gemini и прочие — /v1/chat/completions
       console.log('🤖 [7/9] RiftAI chat/completions...');
       const messages = [{ role: 'user', content: [{ type: 'text', text: fullPrompt }] }];
       for (const c of chars) {
@@ -245,13 +256,15 @@ export default async function handler(req, res) {
     }
 
     console.log(`✅ [8/9] Изображение готово`);
+
     if (redis) {
       try {
         await redis.set(cacheKey, imageUrl, 'EX', 604800);
         if (lockAcquired) await redis.del(lockKey);
         console.log(`💾 [9/9] Сохранено в кэш`);
-      } catch(e) {}
+      } catch(e) { console.warn('Redis set error:', e.message); }
     }
+
     return res.redirect(302, imageUrl);
   } catch (err) {
     console.error('❌ Ошибка:', err.message);
