@@ -79,6 +79,21 @@ async function uploadToImgBB(imgbb_key, b64) {
   return data.data.url;
 }
 
+// ---------- Fetch с retry (для 502/503) ----------
+async function fetchWithRetry(url, options, retries = 3, delay = 1500) {
+  let lastError;
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    const res = await fetch(url, options);
+    if (res.ok) return res;
+    const errText = await res.text();
+    lastError = new Error(`RiftAI error ${res.status}: ${errText.slice(0, 200)}`);
+    console.warn(`⚠️ Attempt ${attempt}/${retries} failed: ${res.status}`);
+    if (res.status !== 502 && res.status !== 503) throw lastError;
+    if (attempt < retries) await new Promise(r => setTimeout(r, delay));
+  }
+  throw lastError;
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -105,13 +120,11 @@ export default async function handler(req, res) {
     const encryptionKey = process.env.ENCRYPTION_KEY;
     let key, charactersRaw, imgbb_key;
 
-    // ---- Получение параметров: key и imgbb_key из шифровки, characters из URL ----
     if (req.query.data && encryptionKey) {
       const decrypted = decryptData(req.query.data, encryptionKey);
       if (decrypted && typeof decrypted === 'object') {
         key = decrypted.key;
         imgbb_key = decrypted.imgbb_key;
-        // charactersRaw берём из URL, а не из расшифрованных данных
         charactersRaw = req.query.characters;
         console.log('✅ [3/9] Данные расшифрованы');
       } else {
@@ -125,7 +138,6 @@ export default async function handler(req, res) {
       console.log('⚠️ [3/9] Незашифрованный запрос');
     }
 
-    // Декодируем characters, если пришёл в URL-encoded виде
     if (charactersRaw && typeof charactersRaw === 'string' && charactersRaw.includes('%')) {
       try {
         charactersRaw = decodeURIComponent(charactersRaw);
@@ -139,14 +151,8 @@ export default async function handler(req, res) {
     const style = req.query.style;
     const model = req.query.model || 'gemini-3.1-flash-image-preview';
 
-    if (!key || !prompt || !userId) {
-      console.error('❌ [3/9] Missing key/prompt/userId');
-      return res.status(400).send('Missing key, prompt, or userId');
-    }
-    if (!imgbb_key) {
-      console.error('❌ [3/9] Missing imgbb_key');
-      return res.status(400).send('Missing imgbb_key');
-    }
+    if (!key || !prompt || !userId) return res.status(400).send('Missing key, prompt, or userId');
+    if (!imgbb_key) return res.status(400).send('Missing imgbb_key');
     console.log(`✅ [3/9] userId: ${userId}, model: ${model}`);
 
     // Стиль
@@ -218,15 +224,15 @@ export default async function handler(req, res) {
           console.log(`   ✅ "${c.name}" загружен`);
         } catch(e) { console.warn(`   ⚠️ "${c.name}": ${e.message}`); }
       }
-      const riftRes = await fetch('https://riftai.su/v1/images/edits', {
+      const riftRes = await fetchWithRetry('https://riftai.su/v1/images/edits', {
         method: 'POST',
         headers: { Authorization: `Bearer ${key}` },
         body: form,
       });
-      if (!riftRes.ok) throw new Error(`RiftAI error ${riftRes.status}`);
       const riftData = await riftRes.json();
       const b64 = riftData.data?.[0]?.b64_json;
-      if (!b64) throw new Error('No image from RiftAI');
+      if (!b64) throw new Error('No image from RiftAI (images/edits)');
+      console.log('✅ [7/9] RiftAI ответил');
       imageUrl = await uploadToImgBB(imgbb_key, b64);
     } else {
       // Gemini и прочие — /v1/chat/completions
@@ -241,19 +247,19 @@ export default async function handler(req, res) {
           console.log(`   ✅ "${c.name}" загружен`);
         } catch(e) { console.warn(`   ⚠️ "${c.name}": ${e.message}`); }
       }
-      const riftRes = await fetch('https://riftai.su/v1/chat/completions', {
+      const riftRes = await fetchWithRetry('https://riftai.su/v1/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
         body: JSON.stringify({ model, messages }),
       });
-      if (!riftRes.ok) throw new Error(`RiftAI error ${riftRes.status}`);
       const riftData = await riftRes.json();
       let b64 = riftData.data?.b64_json || riftData.b64_json || riftData.image;
       if (!b64 && riftData.choices?.[0]?.message?.content) {
         const match = riftData.choices[0].message.content.match(/data:image\/[^;]+;base64,([a-zA-Z0-9+/=]+)/);
         if (match) b64 = match[1];
       }
-      if (!b64) throw new Error('No image from RiftAI');
+      if (!b64) throw new Error('No image from RiftAI (chat/completions)');
+      console.log('✅ [7/9] RiftAI ответил');
       imageUrl = await uploadToImgBB(imgbb_key, b64);
     }
 
