@@ -79,17 +79,49 @@ async function uploadToImgBB(imgbb_key, b64) {
   return data.data.url;
 }
 
-// ---------- Fetch с retry (для 502/503) ----------
+// ---------- Fetch с retry и подробным логированием ----------
 async function fetchWithRetry(url, options, retries = 3, delay = 1500) {
   let lastError;
   for (let attempt = 1; attempt <= retries; attempt++) {
-    const res = await fetch(url, options);
-    if (res.ok) return res;
-    const errText = await res.text();
-    lastError = new Error(`RiftAI error ${res.status}: ${errText.slice(0, 200)}`);
-    console.warn(`⚠️ Attempt ${attempt}/${retries} failed: ${res.status}`);
+    let res;
+    try {
+      res = await fetch(url, options);
+    } catch (networkErr) {
+      lastError = new Error(`Network error: ${networkErr.message}`);
+      console.error(`❌ Network error attempt ${attempt}/${retries}: ${networkErr.message}`);
+      if (attempt < retries) await new Promise(r => setTimeout(r, delay));
+      continue;
+    }
+
+    const rawText = await res.text();
+
+    if (res.ok) {
+      return {
+        ok: true,
+        status: res.status,
+        json: async () => {
+          try { return JSON.parse(rawText); }
+          catch(e) { throw new Error(`Invalid JSON from RiftAI: ${rawText.slice(0, 200)}`); }
+        }
+      };
+    }
+
+    let errorDetails = rawText;
+    try {
+      const parsed = JSON.parse(rawText);
+      errorDetails = JSON.stringify(parsed, null, 2);
+    } catch(e) {}
+
+    console.error(`❌ RiftAI attempt ${attempt}/${retries} — HTTP ${res.status}`);
+    console.error(`   Response: ${errorDetails.slice(0, 800)}`);
+
+    lastError = new Error(`RiftAI HTTP ${res.status}: ${errorDetails.slice(0, 400)}`);
+
     if (res.status !== 502 && res.status !== 503) throw lastError;
-    if (attempt < retries) await new Promise(r => setTimeout(r, delay));
+    if (attempt < retries) {
+      console.warn(`⏳ Retry in ${delay}ms...`);
+      await new Promise(r => setTimeout(r, delay));
+    }
   }
   throw lastError;
 }
@@ -104,16 +136,27 @@ export default async function handler(req, res) {
   try {
     console.log('🚀 [2/9] Начало запроса');
 
-    // Нормализация data
+    // Нормализация data — исправляем все варианты кодировки
     if (req.query.data) {
-      let raw = req.query.data.replace(/ /g, '+');
+      let raw = req.query.data
+        .replace(/%2B/gi, '+')   // %2B → +
+        .replace(/%2F/gi, '/')   // %2F → /
+        .replace(/%3D/gi, '=')   // %3D → =
+        .replace(/ /g, '+');     // пробелы → + (Vercel декодирует + как пробел)
+
+      // Убираем двойные плюсы которые могут появиться после замен
+      raw = raw.replace(/\+{2,}/g, '+');
+
       const parts = raw.split(':');
       if (parts.length === 2) {
         let encrypted = parts[1];
+        // Добираем недостающие = для корректного base64
         const missing = (4 - (encrypted.length % 4)) % 4;
         if (missing) encrypted += '='.repeat(missing);
         raw = parts[0] + ':' + encrypted;
       }
+
+      console.log('🔍 data (first 60):', raw.slice(0, 60));
       req.query.data = raw;
     }
 
@@ -151,8 +194,14 @@ export default async function handler(req, res) {
     const style = req.query.style;
     const model = req.query.model || 'gemini-3.1-flash-image-preview';
 
-    if (!key || !prompt || !userId) return res.status(400).send('Missing key, prompt, or userId');
-    if (!imgbb_key) return res.status(400).send('Missing imgbb_key');
+    if (!key || !prompt || !userId) {
+      console.error(`❌ 400: key=${!!key}, prompt=${!!prompt}, userId=${!!userId}`);
+      return res.status(400).send('Missing key, prompt, or userId');
+    }
+    if (!imgbb_key) {
+      console.error('❌ 400: imgbb_key missing');
+      return res.status(400).send('Missing imgbb_key');
+    }
     console.log(`✅ [3/9] userId: ${userId}, model: ${model}`);
 
     // Стиль
@@ -207,7 +256,6 @@ export default async function handler(req, res) {
     let imageUrl;
 
     if (isGptImage) {
-      // GPT Image — /v1/images/edits
       console.log('🤖 [7/9] RiftAI images/edits...');
       const form = new FormData();
       form.append('model', model);
@@ -221,7 +269,7 @@ export default async function handler(req, res) {
           const ext = extFromContentType(contentType);
           const blob = new Blob([buf], { type: contentType });
           form.append('image[]', blob, `${c.name}.${ext}`);
-          console.log(`   ✅ "${c.name}" загружен`);
+          console.log(`   ✅ "${c.name}" загружен (${buf.length} bytes)`);
         } catch(e) { console.warn(`   ⚠️ "${c.name}": ${e.message}`); }
       }
       const riftRes = await fetchWithRetry('https://riftai.su/v1/images/edits', {
@@ -234,8 +282,8 @@ export default async function handler(req, res) {
       if (!b64) throw new Error('No image from RiftAI (images/edits)');
       console.log('✅ [7/9] RiftAI ответил');
       imageUrl = await uploadToImgBB(imgbb_key, b64);
+
     } else {
-      // Gemini и прочие — /v1/chat/completions
       console.log('🤖 [7/9] RiftAI chat/completions...');
       const messages = [{ role: 'user', content: [{ type: 'text', text: fullPrompt }] }];
       for (const c of chars) {
@@ -244,7 +292,7 @@ export default async function handler(req, res) {
           const { buf, contentType } = await fetchImageBuffer(c.url);
           const base64 = buf.toString('base64');
           messages[0].content.push({ type: 'image_url', image_url: { url: `data:${contentType};base64,${base64}` } });
-          console.log(`   ✅ "${c.name}" загружен`);
+          console.log(`   ✅ "${c.name}" загружен (${buf.length} bytes)`);
         } catch(e) { console.warn(`   ⚠️ "${c.name}": ${e.message}`); }
       }
       const riftRes = await fetchWithRetry('https://riftai.su/v1/chat/completions', {
@@ -279,3 +327,4 @@ export default async function handler(req, res) {
     return res.status(500).send(`Proxy error: ${err.message}`);
   }
 }
+
