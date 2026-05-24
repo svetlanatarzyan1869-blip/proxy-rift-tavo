@@ -136,27 +136,30 @@ export default async function handler(req, res) {
   try {
     console.log('🚀 [2/9] Начало запроса');
 
-    // Нормализация data — исправляем все варианты кодировки
     if (req.query.data) {
-      let raw = req.query.data
-        .replace(/%2B/gi, '+')   // %2B → +
-        .replace(/%2F/gi, '/')   // %2F → /
-        .replace(/%3D/gi, '=')   // %3D → =
-        .replace(/ /g, '+');     // пробелы → + (Vercel декодирует + как пробел)
+      console.log('🔍 RAW data:', req.query.data.slice(0, 80));
 
-      // Убираем двойные плюсы которые могут появиться после замен
+      let raw = req.query.data
+        .replace(/[\r\n\t]/g, '')  // убираем переносы строк и табы
+        .replace(/%2B/gi, '+')     // %2B → +
+        .replace(/%2F/gi, '/')     // %2F → /
+        .replace(/%3D/gi, '=')     // %3D → =
+        .replace(/ /g, '+');       // пробелы → +
+
+      // Убираем двойные плюсы
       raw = raw.replace(/\+{2,}/g, '+');
 
       const parts = raw.split(':');
       if (parts.length === 2) {
         let encrypted = parts[1];
-        // Добираем недостающие = для корректного base64
         const missing = (4 - (encrypted.length % 4)) % 4;
         if (missing) encrypted += '='.repeat(missing);
         raw = parts[0] + ':' + encrypted;
       }
 
-      console.log('🔍 data (first 60):', raw.slice(0, 60));
+      console.log('🔍 data normalized (first 60):', raw.slice(0, 60));
+      console.log('🔍 data length:', raw.length);
+      console.log('🔍 data (last 20):', raw.slice(-20));
       req.query.data = raw;
     }
 
