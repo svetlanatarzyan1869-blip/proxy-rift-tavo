@@ -7,13 +7,35 @@ const require = createRequire(import.meta.url);
 
 export const maxDuration = 300;
 
-// ---------- Расшифровка с нормализацией base64 ----------
+// ---------- Расшифровка ----------
 function decryptData(encryptedBase64, secretKeyBase64) {
   try {
-    let normalized = encryptedBase64.replace(/ /g, '+').replace(/-/g, '+').replace(/_/g, '/');
-    const parts = normalized.split(':');
-    if (parts.length !== 2) return null;
-    const [ivBase64, encryptedBase64Data] = parts;
+    // Поддерживаем оба формата: новый (--) и старый (:)
+    let normalized = encryptedBase64
+      .replace(/[\r\n\t ]/g, '')
+      .replace(/%2B/gi, '+')
+      .replace(/%2F/gi, '/')
+      .replace(/%3D/gi, '=');
+
+    let ivBase64, encryptedBase64Data;
+    if (normalized.includes('--')) {
+      const parts = normalized.split('--');
+      ivBase64 = parts[0];
+      encryptedBase64Data = parts[1];
+    } else if (normalized.includes(':')) {
+      const parts = normalized.split(':');
+      ivBase64 = parts[0];
+      encryptedBase64Data = parts[1];
+    } else {
+      console.error('Invalid format: no separator found');
+      return null;
+    }
+
+    // Исправляем padding
+    const stripped = encryptedBase64Data.replace(/=+$/, '');
+    const missing = (4 - (stripped.length % 4)) % 4;
+    encryptedBase64Data = stripped + '='.repeat(missing);
+
     const iv = Buffer.from(ivBase64, 'base64');
     const encrypted = Buffer.from(encryptedBase64Data, 'base64');
     const key = Buffer.from(secretKeyBase64, 'base64');
@@ -79,7 +101,7 @@ async function uploadToImgBB(imgbb_key, b64) {
   return data.data.url;
 }
 
-// ---------- Fetch с retry и подробным логированием ----------
+// ---------- Fetch с retry ----------
 async function fetchWithRetry(url, options, retries = 3, delay = 1500) {
   let lastError;
   for (let attempt = 1; attempt <= retries; attempt++) {
@@ -114,7 +136,6 @@ async function fetchWithRetry(url, options, retries = 3, delay = 1500) {
 
     console.error(`❌ RiftAI attempt ${attempt}/${retries} — HTTP ${res.status}`);
     console.error(`   Response: ${errorDetails.slice(0, 800)}`);
-
     lastError = new Error(`RiftAI HTTP ${res.status}: ${errorDetails.slice(0, 400)}`);
 
     if (res.status !== 502 && res.status !== 503) throw lastError;
@@ -135,33 +156,7 @@ export default async function handler(req, res) {
 
   try {
     console.log('🚀 [2/9] Начало запроса');
-
-    if (req.query.data) {
-      console.log('🔍 RAW data:', req.query.data.slice(0, 80));
-
-      let raw = req.query.data
-        .replace(/[\r\n\t]/g, '')  // убираем переносы строк и табы
-        .replace(/%2B/gi, '+')     // %2B → +
-        .replace(/%2F/gi, '/')     // %2F → /
-        .replace(/%3D/gi, '=')     // %3D → =
-        .replace(/ /g, '+');       // пробелы → +
-
-      // Убираем двойные плюсы
-      raw = raw.replace(/\+{2,}/g, '+');
-
-      const parts = raw.split(':');
-      if (parts.length === 2) {
-        // Сначала убираем все = в конце, потом добавляем правильное количество
-        const stripped = parts[1].replace(/=+$/, '');
-        const missing = (4 - (stripped.length % 4)) % 4;
-        raw = parts[0] + ':' + stripped + '='.repeat(missing);
-      }
-
-      console.log('🔍 data normalized (first 60):', raw.slice(0, 60));
-      console.log('🔍 data length:', raw.length);
-      console.log('🔍 data (last 20):', raw.slice(-20));
-      req.query.data = raw;
-    }
+    console.log('🔍 RAW data:', req.query.data?.slice(0, 80));
 
     const encryptionKey = process.env.ENCRYPTION_KEY;
     let key, charactersRaw, imgbb_key;
@@ -330,4 +325,3 @@ export default async function handler(req, res) {
     return res.status(500).send(`Proxy error: ${err.message}`);
   }
 }
-
