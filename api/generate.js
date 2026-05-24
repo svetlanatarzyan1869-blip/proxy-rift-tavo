@@ -151,10 +151,10 @@ export default async function handler(req, res) {
 
       const parts = raw.split(':');
       if (parts.length === 2) {
-        let encrypted = parts[1];
-        const missing = (4 - (encrypted.length % 4)) % 4;
-        if (missing) encrypted += '='.repeat(missing);
-        raw = parts[0] + ':' + encrypted;
+        // Сначала убираем все = в конце, потом добавляем правильное количество
+        const stripped = parts[1].replace(/=+$/, '');
+        const missing = (4 - (stripped.length % 4)) % 4;
+        raw = parts[0] + ':' + stripped + '='.repeat(missing);
       }
 
       console.log('🔍 data normalized (first 60):', raw.slice(0, 60));
