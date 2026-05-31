@@ -299,12 +299,32 @@ export default async function handler(req, res) {
         body: JSON.stringify({ model, messages }),
       });
       const riftData = await riftRes.json();
+      console.log('🔍 RiftAI response keys:', JSON.stringify(Object.keys(riftData)));
+      console.log('🔍 RiftAI response (truncated):', JSON.stringify(riftData).slice(0, 800));
       let b64 = riftData.data?.b64_json || riftData.b64_json || riftData.image;
       if (!b64 && riftData.choices?.[0]?.message?.content) {
-        const match = riftData.choices[0].message.content.match(/data:image\/[^;]+;base64,([a-zA-Z0-9+/=]+)/);
-        if (match) b64 = match[1];
+        const content = riftData.choices[0].message.content;
+        console.log('🔍 content type:', typeof content, Array.isArray(content) ? 'array len=' + content.length : '');
+        // content может быть массивом (multimodal response)
+        if (Array.isArray(content)) {
+          for (const part of content) {
+            if (part.type === 'image_url' && part.image_url?.url) {
+              const match = part.image_url.url.match(/data:image\/[^;]+;base64,([a-zA-Z0-9+/=]+)/);
+              if (match) { b64 = match[1]; break; }
+            }
+            if (part.type === 'image' && part.source?.data) {
+              b64 = part.source.data; break;
+            }
+          }
+        } else if (typeof content === 'string') {
+          const match = content.match(/data:image\/[^;]+;base64,([a-zA-Z0-9+/=]+)/);
+          if (match) b64 = match[1];
+        }
       }
-      if (!b64) throw new Error('No image from RiftAI (chat/completions)');
+      if (!b64) {
+        console.error('❌ Full RiftAI response:', JSON.stringify(riftData).slice(0, 1500));
+        throw new Error('No image from RiftAI (chat/completions)');
+      }
       console.log('✅ [7/9] RiftAI ответил');
       imageUrl = await uploadToImgBB(imgbb_key, b64);
     }
