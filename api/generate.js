@@ -7,6 +7,34 @@ const require = createRequire(import.meta.url);
 
 export const maxDuration = 300;
 
+// ---------- SVG-ошибка ----------
+function errorSvg(res, message) {
+  const lines = [];
+  const words = message.split(' ');
+  let line = '';
+  for (const word of words) {
+    if ((line + ' ' + word).trim().length > 55) {
+      lines.push(line.trim());
+      line = word;
+    } else {
+      line = (line + ' ' + word).trim();
+    }
+  }
+  if (line) lines.push(line.trim());
+  const lineHeight = 22;
+  const startY = 90 - ((lines.length - 1) * lineHeight) / 2;
+  const textRows = lines.map((l, i) =>
+    `<text x="340" y="${startY + i * lineHeight}" font-family="system-ui,sans-serif" font-size="14" fill="#aaaaaa" text-anchor="middle">${l.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</text>`
+  ).join('\n  ');
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="680" height="160" viewBox="0 0 680 160">
+  <rect width="680" height="160" rx="16" fill="#1a1a1a" stroke="#ff4444" stroke-width="1.5"/>
+  <text x="340" y="48" font-family="system-ui,sans-serif" font-size="24" fill="#ff4444" text-anchor="middle">⚠️ Ошибка генерации</text>
+  ${textRows}
+</svg>`;
+  res.setHeader('Content-Type', 'image/svg+xml');
+  return res.status(200).send(svg);
+}
+
 // ---------- Расшифровка ----------
 function decryptData(encryptedBase64, secretKeyBase64) {
   try {
@@ -170,7 +198,7 @@ export default async function handler(req, res) {
         console.log('✅ [3/9] Данные расшифрованы');
       } else {
         console.error('❌ [3/9] Ошибка расшифровки');
-        return res.status(400).send('Invalid encrypted data');
+        return errorSvg(res, 'Invalid encrypted data');
       }
     } else {
       key = req.query.key;
@@ -194,11 +222,11 @@ export default async function handler(req, res) {
 
     if (!key || !prompt || !userId) {
       console.error(`❌ 400: key=${!!key}, prompt=${!!prompt}, userId=${!!userId}`);
-      return res.status(400).send('Missing key, prompt, or userId');
+      return errorSvg(res, 'Missing key, prompt, or userId');
     }
     if (!imgbb_key) {
       console.error('❌ 400: imgbb_key missing');
-      return res.status(400).send('Missing imgbb_key');
+      return errorSvg(res, 'Missing imgbb_key');
     }
     console.log(`✅ [3/9] userId: ${userId}, model: ${model}`);
 
@@ -342,6 +370,6 @@ export default async function handler(req, res) {
     return res.redirect(302, imageUrl);
   } catch (err) {
     console.error('❌ Ошибка:', err.message);
-    return res.status(500).send(`Proxy error: ${err.message}`);
+    return errorSvg(res, err.message);
   }
 }
