@@ -35,6 +35,36 @@ function errorSvg(res, message) {
   return res.status(200).send(svg);
 }
 
+// ---------- Понятные ошибки ----------
+function friendlyError(raw) {
+  const s = typeof raw === 'string' ? raw : JSON.stringify(raw);
+  if (/daily credit limit/i.test(s))
+    return 'Закончились дневные кредиты RiftAI. Попробуй завтра или пополни баланс на riftai.su/pricing';
+  if (/insufficient credits/i.test(s))
+    return 'Недостаточно кредитов RiftAI для этого запроса. Пополни баланс на riftai.su/pricing';
+  if (/IMAGE_OTHER/i.test(s))
+    return 'Контент заблокирован фильтром. Попробуй другой промт или более нейтральный референс';
+  if (/IMAGE_SAFETY/i.test(s) || /safety/i.test(s))
+    return 'Контент заблокирован по соображениям безопасности. Измени промт';
+  if (/blocked/i.test(s) && /refunded/i.test(s))
+    return 'Генерация заблокирована фильтром (кредиты возвращены). Попробуй другой промт';
+  if (/rate.?limit/i.test(s))
+    return 'Слишком много запросов. Подожди немного и попробуй снова';
+  if (/upstream_error/i.test(s))
+    return 'Ошибка на стороне RiftAI. Попробуй ещё раз через минуту';
+  if (/network error/i.test(s))
+    return 'Ошибка сети при обращении к RiftAI. Попробуй ещё раз';
+  if (/HTTP 5/i.test(s))
+    return 'Сервер RiftAI временно недоступен. Попробуй через минуту';
+  if (/No image from RiftAI/i.test(s))
+    return 'RiftAI не вернул изображение. Попробуй ещё раз';
+  if (/Invalid encrypted data/i.test(s) || /Missing key/i.test(s))
+    return 'Ошибка конфигурации: неверный или отсутствующий API-ключ';
+  if (/Missing imgbb/i.test(s))
+    return 'Ошибка конфигурации: отсутствует ImgBB ключ';
+  return s.length > 120 ? s.slice(0, 120) + '…' : s;
+}
+
 // ---------- Расшифровка ----------
 function decryptData(encryptedBase64, secretKeyBase64) {
   try {
@@ -164,7 +194,7 @@ async function fetchWithRetry(url, options, retries = 3, delay = 1500) {
 
     console.error(`❌ RiftAI attempt ${attempt}/${retries} — HTTP ${res.status}`);
     console.error(`   Response: ${errorDetails.slice(0, 800)}`);
-    lastError = new Error(`RiftAI HTTP ${res.status}: ${errorDetails.slice(0, 400)}`);
+    lastError = new Error(friendlyError(`RiftAI HTTP ${res.status}: ${errorDetails}`));
 
     if (res.status !== 502 && res.status !== 503) throw lastError;
     if (attempt < retries) {
@@ -198,7 +228,7 @@ export default async function handler(req, res) {
         console.log('✅ [3/9] Данные расшифрованы');
       } else {
         console.error('❌ [3/9] Ошибка расшифровки');
-        return errorSvg(res, 'Invalid encrypted data');
+        return errorSvg(res, 'Ошибка расшифровки data: возможно, ключ шифрования в Vercel не совпадает с тем, что использовался в шифраторе. Перешифруй ключи заново на сайте шифратора и обнови DATA в промте.');
       }
     } else {
       key = req.query.key;
@@ -305,7 +335,10 @@ export default async function handler(req, res) {
       });
       const riftData = await riftRes.json();
       const b64 = riftData.data?.[0]?.b64_json;
-      if (!b64) throw new Error('No image from RiftAI (images/edits)');
+      if (!b64) {
+        const rawMsg = JSON.stringify(riftData).slice(0, 400);
+        throw new Error(friendlyError(rawMsg));
+      }
       console.log('✅ [7/9] RiftAI ответил');
       imageUrl = await uploadToImgBB(imgbb_key, b64);
 
@@ -350,8 +383,9 @@ export default async function handler(req, res) {
         }
       }
       if (!b64) {
+        const rawMsg = riftData.choices?.[0]?.message?.content || JSON.stringify(riftData).slice(0, 400);
         console.error('❌ Full RiftAI response:', JSON.stringify(riftData).slice(0, 1500));
-        throw new Error('No image from RiftAI (chat/completions)');
+        throw new Error(friendlyError(rawMsg));
       }
       console.log('✅ [7/9] RiftAI ответил');
       imageUrl = await uploadToImgBB(imgbb_key, b64);
