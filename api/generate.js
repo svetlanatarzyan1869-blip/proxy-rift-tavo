@@ -65,6 +65,41 @@ function friendlyError(raw) {
   return s.length > 120 ? s.slice(0, 120) + '…' : s;
 }
 
+// ---------- Замена generic-слов на имена персонажей ----------
+function replaceGenericWords(prompt, chars) {
+  if (!chars || chars.length === 0) return prompt;
+  const names = chars.map(c => c.name).filter(Boolean);
+  if (names.length === 0) return prompt;
+  let result = prompt;
+  if (names.length === 1) {
+    const name = names[0];
+    // Порядок важен: сначала длинные фразы, потом короткие
+    const generics = [
+      'the young man','the young woman','the older man','the older woman',
+      'the man','the woman','the guy','the girl','the person','the figure','the character','the individual',
+      'a young man','a young woman','an older man','an older woman',
+      'a man','a woman','a guy','a girl','a person','a figure','a character',
+      'young man','young woman','older man','older woman',
+      'man','woman','guy','girl','person','figure',
+      'мужчина','женщина','парень','девушка','персонаж','человек','молодой человек','молодая девушка',
+      'мужчину','женщину','парня','девушку','персонажа','человека',
+      'мужчине','женщине','парню','девушке',
+      'мужчиной','женщиной','парнем','девушкой',
+      'мужчины','женщины','парня','девушки',
+    ];
+    for (const word of generics) {
+      result = result.replace(new RegExp(`\\b${word}\\b`, 'gi'), name);
+    }
+  } else {
+    // При 2+ персонажах добавляем явное указание в начало промта
+    const nameList = names.join(' and ');
+    const hint = `CRITICAL: The ONLY people in this image are ${nameList}. Never use generic terms like man/woman/guy/girl/person/figure — use ONLY their names. `;
+    result = hint + result;
+  }
+  if (result !== prompt) console.log(`🔤 Generic words replaced. Names: ${names.join(', ')}`);
+  return result;
+}
+
 // ---------- Расшифровка ----------
 function decryptData(encryptedBase64, secretKeyBase64) {
   try {
@@ -133,6 +168,15 @@ function getCacheKey(userId, prompt, characters, style) {
 }
 
 async function fetchImageBuffer(url) {
+  // Авто-фикс ссылки на страницу ImgBB → прямую ссылку
+  if (/^https?:\/\/ibb\.co\/[a-zA-Z0-9]+$/.test(url)) {
+    try {
+      const pageRes = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+      const html = await pageRes.text();
+      const match = html.match(/https:\/\/i\.ibb\.co\/[^"'\s]+\.(?:jpg|jpeg|png|webp|gif)/i);
+      if (match) { console.log(`🔗 Fixed ImgBB URL: ${url} → ${match[0]}`); url = match[0]; }
+    } catch(e) { console.warn('ImgBB URL fix failed:', e.message); }
+  }
   const res = await fetch(url, { headers: { Accept: 'image/*' } });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const contentType = res.headers.get('content-type') || 'image/png';
@@ -271,7 +315,18 @@ export default async function handler(req, res) {
       console.log(`🎨 [4/9] Стиль по умолчанию (${defaultStyle})`);
     }
 
-    const fullPrompt = `${finalStyle}\n\n${prompt}`;
+    // ---- Парсим персонажей заранее для замены generic-слов ----
+    let chars = [];
+    try {
+      chars = JSON.parse(charactersRaw || '[]');
+      console.log(`📸 [6/9] Референсов: ${chars.length}`);
+    } catch(e) {
+      console.warn('Ошибка парсинга characters:', e.message);
+    }
+
+    // Заменяем generic-слова на имена персонажей
+    const cleanPrompt = replaceGenericWords(prompt, chars);
+    const fullPrompt = `${finalStyle}\n\n${cleanPrompt}`;
 
     // ---- Кэш и блокировка ----
     const cacheKey = getCacheKey(userId, prompt, charactersRaw, finalStyle);
@@ -298,15 +353,6 @@ export default async function handler(req, res) {
     }
     if (cachedUrl) return res.redirect(302, cachedUrl);
     console.log('❌ [5/9] Кэш промах, генерация');
-
-    // ---- Референсы ----
-    let chars = [];
-    try {
-      chars = JSON.parse(charactersRaw || '[]');
-      console.log(`📸 [6/9] Референсов: ${chars.length}`);
-    } catch(e) {
-      console.warn('Ошибка парсинга characters:', e.message);
-    }
 
     const isGptImage = model.startsWith('gpt-image');
     let imageUrl;
