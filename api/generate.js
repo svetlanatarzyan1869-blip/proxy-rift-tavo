@@ -8,28 +8,50 @@ const require = createRequire(import.meta.url);
 export const maxDuration = 300;
 
 // ---------- SVG-ошибка ----------
-function errorSvg(res, message) {
-  const lines = [];
-  const words = message.split(' ');
-  let line = '';
-  for (const word of words) {
-    if ((line + ' ' + word).trim().length > 55) {
-      lines.push(line.trim());
-      line = word;
-    } else {
-      line = (line + ' ' + word).trim();
+function errorSvg(res, title, advice) {
+  const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  // Перенос строк для совета
+  const wrap = (text, max) => {
+    const words = String(text).split(' ');
+    const out = [];
+    let line = '';
+    for (const w of words) {
+      if ((line + ' ' + w).trim().length > max) { out.push(line.trim()); line = w; }
+      else line = (line + ' ' + w).trim();
     }
-  }
-  if (line) lines.push(line.trim());
-  const lineHeight = 22;
-  const startY = 90 - ((lines.length - 1) * lineHeight) / 2;
-  const textRows = lines.map((l, i) =>
-    `<text x="340" y="${startY + i * lineHeight}" font-family="system-ui,sans-serif" font-size="14" fill="#aaaaaa" text-anchor="middle">${l.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</text>`
+    if (line) out.push(line.trim());
+    return out;
+  };
+  const titleLines = wrap(title, 48);
+  const adviceLines = advice ? wrap(advice, 56) : [];
+  const lineH = 20;
+  let y = 70;
+  const titleRows = titleLines.map((l,i) =>
+    `<text x="340" y="${y + i*22}" font-family="system-ui,sans-serif" font-size="16" font-weight="600" fill="#f0e6ff" text-anchor="middle">${esc(l)}</text>`
   ).join('\n  ');
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="680" height="160" viewBox="0 0 680 160">
-  <rect width="680" height="160" rx="16" fill="#1a1a1a" stroke="#ff4444" stroke-width="1.5"/>
-  <text x="340" y="48" font-family="system-ui,sans-serif" font-size="24" fill="#ff4444" text-anchor="middle">⚠️ Ошибка генерации</text>
-  ${textRows}
+  y += titleLines.length * 22 + 8;
+  const adviceRows = adviceLines.map((l,i) =>
+    `<text x="340" y="${y + i*lineH}" font-family="system-ui,sans-serif" font-size="13" fill="#9d8fc4" text-anchor="middle">${esc(l)}</text>`
+  ).join('\n  ');
+  const totalH = Math.max(160, y + adviceLines.length * lineH + 24);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="680" height="${totalH}" viewBox="0 0 680 ${totalH}">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1a1018"/>
+      <stop offset="100%" stop-color="#120a14"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#a855f7"/>
+      <stop offset="100%" stop-color="#ec4899"/>
+    </linearGradient>
+  </defs>
+  <rect width="680" height="${totalH}" rx="16" fill="url(#bg)" stroke="url(#accent)" stroke-width="1.5" stroke-opacity="0.4"/>
+  <circle cx="340" cy="34" r="14" fill="none" stroke="url(#accent)" stroke-width="2">
+    <animate attributeName="stroke-opacity" values="1;0.3;1" dur="1.8s" repeatCount="indefinite"/>
+  </circle>
+  <text x="340" y="40" font-family="system-ui,sans-serif" font-size="16" fill="#ec4899" text-anchor="middle">!</text>
+  ${titleRows}
+  ${adviceRows}
 </svg>`;
   res.setHeader('Content-Type', 'image/svg+xml');
   return res.status(200).send(svg);
@@ -37,32 +59,49 @@ function errorSvg(res, message) {
 
 // ---------- Понятные ошибки ----------
 function friendlyError(raw) {
+  const f = friendlyErrorObj(raw);
+  return f.advice ? `${f.title} — ${f.advice}` : f.title;
+}
+
+function friendlyErrorObj(raw) {
   const s = typeof raw === 'string' ? raw : JSON.stringify(raw);
   if (/daily credit limit/i.test(s))
-    return 'Закончились дневные кредиты RiftAI. Попробуй завтра или пополни баланс на riftai.su/pricing';
+    return {title:'Закончились дневные кредиты', advice:'Подожди до завтра или пополни баланс на riftai.su/pricing'};
   if (/insufficient credits/i.test(s))
-    return 'Недостаточно кредитов RiftAI для этого запроса. Пополни баланс на riftai.su/pricing';
-  if (/IMAGE_OTHER/i.test(s))
-    return 'Контент заблокирован фильтром. Попробуй другой промт или более нейтральный референс';
+    return {title:'Недостаточно кредитов', advice:'Пополни баланс на riftai.su/pricing'};
+  if (/IMAGE_OTHER/i.test(s) || (/blocked/i.test(s) && /OTHER/i.test(s)))
+    return {title:'Контент заблокирован фильтром', advice:'Упрости промт, замени референс на нейтральный или смени модель'};
   if (/IMAGE_SAFETY/i.test(s) || /safety/i.test(s))
-    return 'Контент заблокирован по соображениям безопасности. Измени промт';
+    return {title:'Контент заблокирован по безопасности', advice:'Измени описание сцены и попробуй снова'};
   if (/blocked/i.test(s) && /refunded/i.test(s))
-    return 'Генерация заблокирована фильтром (кредиты возвращены). Попробуй другой промт';
+    return {title:'Заблокировано фильтром', advice:'Кредиты возвращены. Попробуй другой промт или модель'};
+  if (/possibly filtered/i.test(s) || /No images? (in response|generated)/i.test(s))
+    return {title:'Модель не вернула картинку', advice:'Скорее всего цензура. Упрости промт, облегчи референс (<1 МБ) или смени модель'};
   if (/rate.?limit/i.test(s))
-    return 'Слишком много запросов. Подожди немного и попробуй снова';
+    return {title:'Слишком много запросов', advice:'Подожди минуту и попробуй снова'};
+  if (/cannot import/i.test(s))
+    return {title:'Технический сбой RiftAI', advice:'Это на их стороне. Подожди несколько минут или смени модель'};
+  if (/HTTP 404/i.test(s) || /Not Found/i.test(s))
+    return {title:'Эндпоинт недоступен', advice:'Модель gpt-image сейчас сломана на RiftAI. Используй gemini-модель'};
   if (/upstream_error/i.test(s))
-    return 'Ошибка на стороне RiftAI. Попробуй ещё раз через минуту';
+    return {title:'Ошибка на стороне RiftAI', advice:'Попробуй ещё раз через минуту'};
   if (/network error/i.test(s))
-    return 'Ошибка сети при обращении к RiftAI. Попробуй ещё раз';
+    return {title:'Ошибка сети', advice:'Проверь соединение и попробуй снова'};
   if (/HTTP 5/i.test(s))
-    return 'Сервер RiftAI временно недоступен. Попробуй через минуту';
+    return {title:'Сервер RiftAI недоступен', advice:'Попробуй через минуту'};
   if (/No image from RiftAI/i.test(s))
-    return 'RiftAI не вернул изображение. Попробуй ещё раз';
+    return {title:'RiftAI не вернул изображение', advice:'Попробуй ещё раз или смени модель'};
+  if (/Invalid API v1 key/i.test(s) || /imgbb.*key/i.test(s))
+    return {title:'Неверный ImgBB ключ', advice:'Перешифруй данные заново на сайте настройки'};
   if (/Invalid encrypted data/i.test(s) || /Missing key/i.test(s))
-    return 'Ошибка конфигурации: неверный или отсутствующий API-ключ';
+    return {title:'Неверный ключ конфигурации', advice:'Перешифруй данные на сайте настройки'};
   if (/Missing imgbb/i.test(s))
-    return 'Ошибка конфигурации: отсутствует ImgBB ключ';
-  return s.length > 120 ? s.slice(0, 120) + '…' : s;
+    return {title:'Отсутствует ImgBB ключ', advice:'Перешифруй данные, указав оба ключа'};
+  if (/Not an image/i.test(s))
+    return {title:'Ссылка ведёт не на картинку', advice:'Используй прямую ссылку i.ibb.co/.../file.jpg, а не страницу ImgBB'};
+  if (/bad decrypt/i.test(s) || /Ошибка расшифровки/i.test(s))
+    return {title:'Ошибка расшифровки', advice:'Ключ не совпадает. Перешифруй данные на сайте настройки'};
+  return {title:'Что-то пошло не так', advice: s.length > 100 ? s.slice(0,100)+'…' : s};
 }
 
 // ---------- Замена generic-слов на имена персонажей ----------
@@ -272,7 +311,7 @@ export default async function handler(req, res) {
         console.log('✅ [3/9] Данные расшифрованы');
       } else {
         console.error('❌ [3/9] Ошибка расшифровки');
-        return errorSvg(res, 'Ошибка расшифровки data: возможно, ключ шифрования в Vercel не совпадает с тем, что использовался в шифраторе. Перешифруй ключи заново на сайте шифратора и обнови DATA в промте.');
+        return errorSvg(res, 'Ошибка расшифровки данных', 'Ключ шифрования не совпадает. Перешифруй ключи заново на сайте настройки и обнови DATA в промте');
       }
     } else {
       key = req.query.key;
@@ -296,11 +335,11 @@ export default async function handler(req, res) {
 
     if (!key || !prompt || !userId) {
       console.error(`❌ 400: key=${!!key}, prompt=${!!prompt}, userId=${!!userId}`);
-      return errorSvg(res, 'Missing key, prompt, or userId');
+      return errorSvg(res, 'Неполная конфигурация', 'Отсутствует ключ, промт или userId. Перешифруй данные на сайте настройки');
     }
     if (!imgbb_key) {
       console.error('❌ 400: imgbb_key missing');
-      return errorSvg(res, 'Missing imgbb_key');
+      return errorSvg(res, 'Отсутствует ImgBB ключ', 'Перешифруй данные, указав оба ключа');
     }
     console.log(`✅ [3/9] userId: ${userId}, model: ${model}`);
 
@@ -450,6 +489,7 @@ export default async function handler(req, res) {
     return res.redirect(302, imageUrl);
   } catch (err) {
     console.error('❌ Ошибка:', err.message);
-    return errorSvg(res, err.message);
+    const fe = friendlyErrorObj(err.message);
+    return errorSvg(res, fe.title, fe.advice);
   }
 }
