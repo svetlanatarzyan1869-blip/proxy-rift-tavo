@@ -1,8 +1,9 @@
+cat > vercel.json << 'EOF'
 {
   "functions": {
     "api/generate.js": {
       "maxDuration": 60
     }
-  },
-  "public": true
+  }
 }
+EOF
