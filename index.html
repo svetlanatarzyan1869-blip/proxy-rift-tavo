@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tavo · Image Setup</title>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@300;400;600;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a0d;
+  --s1:#111118;
+  --s2:#1a1824;
+  --s3:#221e30;
+  --border:rgba(168,85,247,0.12);
+  --border2:rgba(168,85,247,0.25);
+  --purple:#a855f7;
+  --pink:#ec4899;
+  --purple-dim:rgba(168,85,247,0.12);
+  --pink-dim:rgba(236,72,153,0.1);
+  --text:#f0e6ff;
+  --text2:#9d8fc4;
+  --text3:#5a4f72;
+  --ok:#34d399;
+  --ok-dim:rgba(52,211,153,0.1);
+  --grad:linear-gradient(135deg,#a855f7,#ec4899);
+}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-weight:400;min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 70% 50% at 80% 0%,rgba(168,85,247,0.06) 0%,transparent 60%),radial-gradient(ellipse 50% 40% at 10% 90%,rgba(236,72,153,0.05) 0%,transparent 60%);pointer-events:none;z-index:0;}
+.header{position:sticky;top:0;z-index:100;background:rgba(10,10,13,0.85);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);padding:0 20px;height:56px;display:flex;align-items:center;justify-content:space-between;}
+.logo{font-family:'Unbounded',sans-serif;font-size:14px;font-weight:700;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:-0.02em;}
+.header-links{display:flex;gap:4px;}
+.hlink{padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text3);font-size:10px;font-weight:500;text-decoration:none;transition:all 0.15s;white-space:nowrap;}
+.hlink:hover{border-color:var(--border2);color:var(--purple);}
+.wrap{position:relative;z-index:1;padding:24px 16px 80px;max-width:520px;margin:0 auto;}
+.hero{text-align:center;margin-bottom:32px;padding-top:8px;}
+.hero-eyebrow{font-family:'Unbounded',sans-serif;font-size:9px;font-weight:300;letter-spacing:0.3em;text-transform:uppercase;color:var(--purple);margin-bottom:12px;opacity:0.8;}
+.hero-title{font-family:'Unbounded',sans-serif;font-size:24px;font-weight:700;line-height:1.15;letter-spacing:-0.03em;margin-bottom:8px;}
+.hero-title span{background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.hero-sub{font-size:13px;color:var(--text2);line-height:1.6;}
+.steps{display:flex;gap:0;margin-bottom:28px;position:relative;}
+.steps::before{content:'';position:absolute;top:14px;left:14px;right:14px;height:1px;background:linear-gradient(90deg,var(--border),rgba(168,85,247,0.2),var(--border));}
+.step{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;position:relative;z-index:1;}
+.step-dot{width:28px;height:28px;border-radius:50%;border:1.5px solid var(--border);background:var(--s1);display:flex;align-items:center;justify-content:center;font-family:'Unbounded',sans-serif;font-size:10px;font-weight:600;color:var(--text3);transition:all 0.3s;}
+.step.active .step-dot{border-color:var(--purple);background:var(--purple-dim);color:var(--purple);box-shadow:0 0 12px rgba(168,85,247,0.3);}
+.step.done .step-dot{border-color:var(--ok);background:var(--ok-dim);color:var(--ok);}
+.step-label{font-size:9px;color:var(--text3);text-align:center;font-weight:500;text-transform:uppercase;letter-spacing:0.05em;}
+.step.active .step-label{color:var(--purple);}
+.step.done .step-label{color:var(--ok);}
+.card{background:var(--s1);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:10px;transition:border-color 0.2s;}
+.card.active{border-color:var(--border2);}
+.card-head{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.card-head-left{display:flex;align-items:center;gap:10px;}
+.card-icon{width:32px;height:32px;border-radius:10px;background:var(--purple-dim);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
+.card-title{font-family:'Unbounded',sans-serif;font-size:11px;font-weight:600;color:var(--text);}
+.card-desc{font-size:10px;color:var(--text3);margin-top:1px;}
+.card-edit{font-size:10px;color:var(--text3);background:none;border:1px solid var(--border);border-radius:8px;padding:4px 10px;cursor:pointer;font-family:'Inter',sans-serif;transition:all 0.15s;}
+.card-edit:hover{border-color:var(--border2);color:var(--purple);}
+.card-body{padding:16px;}
+.provider-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;}
+.provider-btn{padding:12px 8px;border-radius:12px;border:1.5px solid var(--border);background:transparent;cursor:pointer;text-align:center;transition:all 0.2s;position:relative;overflow:hidden;}
+.provider-btn::before{content:'';position:absolute;inset:0;background:var(--grad);opacity:0;transition:opacity 0.2s;}
+.provider-btn.active{border-color:transparent;}
+.provider-btn.active::before{opacity:0.12;}
+.provider-btn.active .p-name{color:var(--text);}
+.p-name{font-family:'Unbounded',sans-serif;font-size:11px;font-weight:600;color:var(--text3);position:relative;transition:color 0.2s;}
+.p-hint{font-size:9px;color:var(--text3);margin-top:2px;position:relative;}
+.p-link{font-size:9px;color:var(--purple);text-decoration:none;position:relative;}
+.p-link:hover{text-decoration:underline;}
+.field{margin-bottom:12px;}
+.field-label{font-size:10px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:5px;display:flex;align-items:center;justify-content:space-between;}
+.field-label a{font-size:9px;color:var(--purple);text-decoration:none;text-transform:none;letter-spacing:0;}
+.field-label a:hover{text-decoration:underline;}
+.field-input{width:100%;background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--text);font-family:'Inter',sans-serif;font-size:13px;outline:none;transition:border-color 0.2s;}
+.field-input:focus{border-color:var(--border2);}
+.field-input::placeholder{color:var(--text3);}
+.field-hint{font-size:10px;color:var(--text3);margin-top:4px;line-height:1.4;}
+.enc-badge{background:var(--ok-dim);border:1px solid rgba(52,211,153,0.2);border-radius:10px;padding:8px 12px;margin-top:8px;display:flex;align-items:center;gap:8px;}
+.enc-label{font-size:9px;font-weight:600;color:var(--ok);text-transform:uppercase;letter-spacing:0.1em;}
+.enc-val{font-size:10px;color:var(--text3);font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;}
+.refs-zone{border:1.5px dashed var(--border);border-radius:12px;padding:20px;text-align:center;cursor:pointer;transition:all 0.2s;margin-bottom:10px;}
+.refs-zone:hover{border-color:var(--border2);background:var(--purple-dim);}
+.refs-zone-icon{font-size:22px;margin-bottom:6px;}
+.refs-zone-text{font-size:12px;color:var(--text2);}
+.refs-zone-hint{font-size:10px;color:var(--text3);margin-top:3px;}
+.ref-card{background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.ref-thumb{width:38px;height:38px;border-radius:8px;object-fit:cover;background:var(--s3);flex-shrink:0;border:1px solid var(--border);}
+.ref-info{flex:1;min-width:0;}
+.ref-name{font-size:12px;font-weight:500;color:var(--text);margin-bottom:2px;}
+.ref-url{font-size:9px;color:var(--ok);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ref-url.loading{color:var(--text3);}
+.ref-actions{display:flex;gap:4px;flex-shrink:0;}
+.ref-btn{width:26px;height:26px;border-radius:7px;border:1px solid var(--border);background:transparent;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;color:var(--text3);transition:all 0.15s;}
+.ref-btn:hover{border-color:var(--border2);color:var(--purple);}
+.ref-btn.del:hover{border-color:rgba(239,68,68,0.4);color:#f87171;}
+.ref-name-input{background:var(--s3);border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--text);font-family:'Inter',sans-serif;font-size:11px;outline:none;width:100%;margin-top:4px;}
+.ref-name-input:focus{border-color:var(--border2);}
+.sel-label{font-size:10px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:5px;display:flex;justify-content:space-between;align-items:center;}
+.sel-label a{font-size:9px;color:var(--purple);text-decoration:none;text-transform:none;letter-spacing:0;}
+.sel-wrap{position:relative;margin-bottom:12px;}
+.sel-wrap::after{content:'▾';position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--text3);pointer-events:none;font-size:11px;}
+.sel{width:100%;background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:10px 32px 10px 12px;color:var(--text);font-family:'Inter',sans-serif;font-size:12px;outline:none;appearance:none;cursor:pointer;}
+.sel:focus{border-color:var(--border2);}
+.prompt-box{background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:14px;font-size:11px;color:var(--text2);line-height:1.7;font-family:monospace;white-space:pre-wrap;word-break:break-all;max-height:220px;overflow-y:auto;margin-bottom:10px;}
+.out-tabs{display:flex;gap:6px;margin-bottom:10px;}
+.out-tab{flex:1;padding:8px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--text3);font-family:'Unbounded',sans-serif;font-size:10px;font-weight:600;cursor:pointer;transition:all 0.15s;}
+.out-tab.active{background:var(--purple-dim);border-color:var(--border2);color:var(--purple);}
+.out-hint{font-size:10px;color:var(--text3);margin-bottom:8px;line-height:1.4;}
+.pk{color:var(--purple);}
+.pv{color:var(--ok);}
+.btn{width:100%;padding:14px;border-radius:12px;border:none;font-family:'Unbounded',sans-serif;font-size:11px;font-weight:600;cursor:pointer;transition:all 0.2s;letter-spacing:0.02em;margin-bottom:8px;position:relative;overflow:hidden;}
+.btn:last-child{margin-bottom:0;}
+.btn-primary{background:var(--grad);color:#fff;}
+.btn-primary:hover{opacity:0.9;transform:translateY(-1px);}
+.btn-primary::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,0.1),transparent);pointer-events:none;}
+.btn-copy{background:var(--ok-dim);color:var(--ok);border:1px solid rgba(52,211,153,0.25);}
+.btn-copy:hover{background:rgba(52,211,153,0.15);}
+.btn-ghost{background:transparent;border:1.5px solid var(--border);color:var(--text2);}
+.btn-ghost:hover{border-color:var(--border2);color:var(--purple);}
+.notice{background:rgba(168,85,247,0.08);border:1px solid var(--border2);border-radius:10px;padding:10px 12px;font-size:11px;color:var(--purple);line-height:1.5;margin-bottom:12px;}
+.resources{background:var(--s1);border:1px solid var(--border);border-radius:16px;padding:14px 16px;margin-bottom:10px;}
+.res-title{font-family:'Unbounded',sans-serif;font-size:9px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.15em;margin-bottom:12px;}
+.res-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.res-item{background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:10px;text-decoration:none;transition:all 0.15s;display:block;}
+.res-item:hover{border-color:var(--border2);}
+.res-icon{font-size:16px;margin-bottom:4px;}
+.res-name{font-size:11px;font-weight:500;color:var(--text);}
+.res-desc{font-size:9px;color:var(--text3);margin-top:2px;}
+.footer{text-align:center;padding:24px 16px;font-size:10px;color:var(--text3);line-height:1.6;}
+.footer a{color:var(--purple);text-decoration:none;}
+@keyframes pulse-grad{0%,100%{box-shadow:0 0 0 0 rgba(168,85,247,0.4)}50%{box-shadow:0 0 0 8px rgba(168,85,247,0)}}
+.btn-primary.ready{animation:pulse-grad 2s ease infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner{width:14px;height:14px;border:2px solid rgba(255,255,255,0.2);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block;margin-right:6px;vertical-align:middle;}
+input[type=file]{display:none;}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="logo">✦ tavo images</div>
+  <div class="header-links">
+    <a class="hlink" href="https://linkapi.ai" target="_blank">LinkAPI</a>
+    <a class="hlink" href="https://riftai.su" target="_blank">RiftAI</a>
+    <a class="hlink" href="https://imgbb.com" target="_blank">ImgBB</a>
+  </div>
+</div>
+<div class="wrap">
+  <div class="hero">
+    <div class="hero-eyebrow">генерация картинок</div>
+    <div class="hero-title">Настройка<br><span>за 4 шага</span></div>
+    <div class="hero-sub">Заполни форму — получи готовый промт для Tavo</div>
+  </div>
+  <div class="steps" id="steps-bar">
+    <div class="step active" id="step-1"><div class="step-dot">1</div><div class="step-label">Ключи</div></div>
+    <div class="step" id="step-2"><div class="step-dot">2</div><div class="step-label">Рефы</div></div>
+    <div class="step" id="step-3"><div class="step-dot">3</div><div class="step-label">Настройки</div></div>
+    <div class="step" id="step-4"><div class="step-dot">4</div><div class="step-label">Промт</div></div>
+  </div>
+  <div class="card active" id="card-1">
+    <div class="card-head">
+      <div class="card-head-left">
+        <div class="card-icon">🔑</div>
+        <div><div class="card-title">API-ключи</div><div class="card-desc">LinkAPI или RiftAI + ImgBB</div></div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="provider-grid">
+        <button class="provider-btn active" id="prov-link" onclick="selectProvider('link')">
+          <div class="p-name">LinkAPI</div>
+          <div class="p-hint">linkapi.ai</div>
+        </button>
+        <button class="provider-btn" id="prov-rift" onclick="selectProvider('rift')">
+          <div class="p-name">RiftAI</div>
+          <div class="p-hint">riftai.su</div>
+        </button>
+      </div>
+      <div class="field">
+        <div class="field-label">API-ключ <a href="https://linkapi.ai" target="_blank" id="api-link">linkapi.ai →</a></div>
+        <input class="field-input" type="password" id="api-key" placeholder="sk-...">
+        <div class="field-hint" id="api-hint">Личный кабинет → API Keys</div>
+      </div>
+      <div class="field">
+        <div class="field-label">ImgBB Key <a href="https://api.imgbb.com" target="_blank">api.imgbb.com →</a></div>
+        <input class="field-input" type="password" id="imgbb-key" placeholder="Ключ ImgBB">
+        <div class="field-hint">imgbb.com → Настройки → API</div>
+      </div>
+      <div class="enc-badge" id="enc-badge" style="display:none">
+        <div class="enc-label">✓ зашифровано</div>
+        <div class="enc-val" id="enc-val"></div>
+      </div>
+      <div style="height:12px"></div>
+      <button class="btn btn-primary" onclick="encryptKeys()">Зашифровать и продолжить →</button>
+    </div>
+  </div>
+  <div class="card" id="card-2" style="opacity:0.5;pointer-events:none">
+    <div class="card-head">
+      <div class="card-head-left">
+        <div class="card-icon">🖼️</div>
+        <div><div class="card-title">Референсы персонажей</div><div class="card-desc">Фото → автоматически на ImgBB</div></div>
+      </div>
+      <button class="card-edit" onclick="addRef()">+ Добавить</button>
+    </div>
+    <div class="card-body">
+      <div class="notice">Загрузи фото персонажей — ссылки создадутся автоматически. Копировать ничего не нужно.</div>
+      <div id="refs-list"></div>
+      <div class="refs-zone" onclick="document.getElementById('file-input').click()">
+        <div class="refs-zone-icon">＋</div>
+        <div class="refs-zone-text">Нажми чтобы добавить персонажа</div>
+        <div class="refs-zone-hint">JPG, PNG, WEBP · до 32 МБ</div>
+      </div>
+      <input type="file" id="file-input" accept="image/*" onchange="handleFile(this)">
+      <div class="field" id="name-field" style="display:none">
+        <div class="field-label">Имя персонажа</div>
+        <input class="field-input" type="text" id="char-name" placeholder="Например: Yoruichi" onkeydown="if(event.key==='Enter')confirmRef()">
+        <div style="height:8px"></div>
+        <button class="btn btn-primary" onclick="confirmRef()">Добавить →</button>
+      </div>
+      <div style="height:4px"></div>
+      <button class="btn btn-ghost" id="refs-next" onclick="goToStep(3)" style="display:none">Продолжить →</button>
+    </div>
+  </div>
+  <div class="card" id="card-3" style="opacity:0.5;pointer-events:none">
+    <div class="card-head">
+      <div class="card-head-left">
+        <div class="card-icon">⚙️</div>
+        <div><div class="card-title">Настройки генерации</div><div class="card-desc">Модель, стиль, твой ID</div></div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="sel-label">Модель <a href="https://riftai.su/models" target="_blank">все модели →</a></div>
+      <div class="sel-wrap">
+        <select class="sel" id="model-sel"></select>
+      </div>
+      <div class="sel-label">Стиль <a href="https://wewwaistyping.github.io/slayimagespromts/" target="_blank">все стили →</a></div>
+      <div style="position:relative;margin-bottom:12px;">
+        <input class="field-input" type="text" id="style-search" placeholder="🔍 Поиск стиля… (68 доступно)" autocomplete="off" onfocus="openStyleList()" oninput="filterStyles()">
+        <input type="hidden" id="style-sel" value="kodak_portra_400">
+        <div id="style-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:50;margin-top:4px;background:var(--s2);border:1px solid var(--border2);border-radius:10px;max-height:280px;overflow-y:auto;box-shadow:0 12px 32px rgba(0,0,0,0.5);"></div>
+      </div>
+      <div class="field">
+        <div class="field-label">Твой ID <span style="font-size:9px;color:var(--text3);font-weight:400;text-transform:none;letter-spacing:0">для кэша картинок</span></div>
+        <input class="field-input" type="text" id="user-id" placeholder="Любой никнейм · минимум 5 символов">
+        <div class="field-hint">Картинки с одинаковым промтом будут кэшироваться и не тратить кредиты</div>
+      </div>
+      <button class="btn btn-primary" onclick="generatePrompt()">Сгенерировать промт →</button>
+    </div>
+  </div>
+  <div class="card" id="card-4" style="opacity:0.5;pointer-events:none">
+    <div class="card-head">
+      <div class="card-head-left">
+        <div class="card-icon">📋</div>
+        <div><div class="card-title">Готовый промт</div><div class="card-desc">Скопируй и вставь в Tavo</div></div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="notice">⚠️ Нужны ОБА блока: промт (вставить в карточку персонажа или в Tavo-промт) и регекс (импортировать в Tavo: Regex → Import). Не забудь выключить стриминг: More → Settings → Stream Text → выкл.</div>
+      <div class="out-tabs">
+        <button class="out-tab active" id="tab-prompt" onclick="switchOut('prompt')">1 · Промт</button>
+        <button class="out-tab" id="tab-regex" onclick="switchOut('regex')">2 · Регекс</button>
+      </div>
+      <div id="out-prompt">
+        <div class="out-hint">Скопируй и вставь в описание персонажа (или в Tavo-промт)</div>
+        <div class="prompt-box" id="prompt-box">Заполни шаги 1–3</div>
+        <button class="btn btn-copy ready" id="copy-btn" onclick="copyPrompt()" style="display:none">📋 Скопировать промт</button>
+      </div>
+      <div id="out-regex" style="display:none">
+        <div class="out-hint">Импортируй в Tavo: Regex → Import. Разворачивает маркер [IMG] в картинку.</div>
+        <div class="prompt-box" id="regex-box">Заполни шаги 1–3</div>
+        <button class="btn btn-copy ready" id="copy-regex-btn" onclick="copyRegex()" style="display:none">📋 Скопировать регекс</button>
+      </div>
+      <button class="btn btn-ghost" onclick="resetAll()" style="margin-top:4px">↩ Начать заново</button>
+    </div>
+  </div>
+  <div class="resources">
+    <div class="res-title">Ресурсы</div>
+    <div class="res-grid">
+      <a class="res-item" href="https://linkapi.ai" target="_blank"><div class="res-icon">🔗</div><div class="res-name">LinkAPI</div><div class="res-desc">Купить API-ключ</div></a>
+      <a class="res-item" href="https://riftai.su" target="_blank"><div class="res-icon">🌀</div><div class="res-name">RiftAI</div><div class="res-desc">Альтернативный провайдер</div></a>
+      <a class="res-item" href="https://imgbb.com" target="_blank"><div class="res-icon">🖼️</div><div class="res-name">ImgBB</div><div class="res-desc">Хостинг картинок</div></a>
+      <a class="res-item" href="https://wewwaistyping.github.io/slayimagespromts/" target="_blank"><div class="res-icon">🎨</div><div class="res-name">Стили</div><div class="res-desc">Список всех стилей</div></a>
+      <a class="res-item" href="https://docs.google.com/document/u/0/d/1F3Yo-8yoho0T-GO0ONYnSqMA2FB_wBUHxJaDXNcqO7o/mobilebasic" target="_blank"><div class="res-icon">📖</div><div class="res-name">Инструкция</div><div class="res-desc">Полное руководство</div></a>
+      <a class="res-item" href="https://linkapi-proxy-imgbb-key-cache.vercel.app/encrypt.html" target="_blank"><div class="res-icon">🔐</div><div class="res-name">Шифратор</div><div class="res-desc">Ручное шифрование</div></a>
+    </div>
+  </div>
+  <div class="footer">сделано с 🤍 для сообщества Tavo<br><a href="https://t.me/+3qj7eHn2WWQ5ZjNi" target="_blank">а мы тут иишками балуемся</a> · если что-то сломалось — загляни в инструкцию</div>
+</div>
+<script>
+const state = {
+  provider: 'link',
+  encryptedData: '',
+  refs: [],
+  pendingFile: null,
+  currentStep: 1
+};
+function selectProvider(p) {
+  state.provider = p;
+  document.getElementById('prov-link').classList.toggle('active', p==='link');
+  document.getElementById('prov-rift').classList.toggle('active', p==='rift');
+  document.getElementById('api-link').href = p==='link' ? 'https://linkapi.ai' : 'https://riftai.su';
+  document.getElementById('api-link').textContent = p==='link' ? 'linkapi.ai →' : 'riftai.su →';
+  if(typeof renderModels==='function') renderModels();
+  document.getElementById('api-hint').textContent = p==='link' ? 'Личный кабинет → API Keys' : 'Личный кабинет → API Keys';
+}
+const MASTER_KEY = '+KttdSbKJxIgDorFxEf9a3eHGYuH4h/OljxbkPBG3wk=';
+async function encryptData(obj, secretKeyBase64, isRift) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(JSON.stringify(obj));
+  const iv = crypto.getRandomValues(new Uint8Array(16));
+  const keyBuffer = Uint8Array.from(atob(secretKeyBase64), c => c.charCodeAt(0));
+  const cryptoKey = await crypto.subtle.importKey('raw', keyBuffer, 'AES-CBC', false, ['encrypt']);
+  const encrypted = await crypto.subtle.encrypt({ name: 'AES-CBC', iv }, cryptoKey, data);
+  const ivBase64 = btoa(String.fromCharCode(...iv));
+  const encBase64 = btoa(String.fromCharCode(...new Uint8Array(encrypted)));
+  if (isRift) {
+    const enc = s => s.replace(/\+/g,'%2B').replace(/\//g,'%2F').replace(/=/g,'%3D');
+    return `${enc(ivBase64)}--${enc(encBase64)}`;
+  }
+  return `${ivBase64}:${encBase64}`;
+}
+async function encryptKeys() {
+  const apiKey = document.getElementById('api-key').value.trim();
+  const imgbbKey = document.getElementById('imgbb-key').value.trim();
+  if (!apiKey || !imgbbKey) { alert('Заполни оба поля'); return; }
+  try {
+    const encrypted = await encryptData({key: apiKey, imgbb_key: imgbbKey}, MASTER_KEY, state.provider==='rift');
+    state.encryptedData = encrypted;
+    document.getElementById('enc-val').textContent = encrypted.slice(0,60)+'…';
+    document.getElementById('enc-badge').style.display = 'flex';
+    goToStep(2);
+  } catch(e) { alert('Ошибка шифрования: '+e.message); }
+}
+let pendingFileData = null;
+function handleFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    pendingFileData = {base64: e.target.result, name: file.name};
+    document.getElementById('name-field').style.display = 'block';
+    document.getElementById('char-name').value = '';
+    document.getElementById('char-name').focus();
+  };
+  reader.readAsDataURL(file);
+  input.value = '';
+}
+async function confirmRef() {
+  const name = document.getElementById('char-name').value.trim();
+  if (!name) { alert('Введи имя персонажа'); return; }
+  if (!pendingFileData) return;
+  const imgbbKey = document.getElementById('imgbb-key').value.trim();
+  if (!imgbbKey) { alert('Нужен ImgBB ключ'); return; }
+  const tempId = 'ref-'+Date.now();
+  const list = document.getElementById('refs-list');
+  list.insertAdjacentHTML('beforeend', `
+    <div class="ref-card" id="${tempId}">
+      <div class="ref-thumb" style="background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:18px;">⏳</div>
+      <div class="ref-info">
+        <div class="ref-name">${name}</div>
+        <div class="ref-url loading">загружаю на ImgBB…</div>
+      </div>
+    </div>`);
+  document.getElementById('name-field').style.display = 'none';
+  try {
+    const base64 = pendingFileData.base64.split(',')[1];
+    const form = new FormData();
+    form.append('key', imgbbKey);
+    form.append('image', base64);
+    form.append('name', name+'_'+Date.now());
+    const res = await fetch('https://api.imgbb.com/1/upload', {method:'POST', body:form});
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error?.message || 'ImgBB error');
+    const url = data.data.url;
+    state.refs.push({name, url});
+    pendingFileData = null;
+    const card = document.getElementById(tempId);
+    card.innerHTML = `
+      <img class="ref-thumb" src="${url}" onerror="this.style.background='var(--s3)'">
+      <div class="ref-info">
+        <div class="ref-name">${name}</div>
+        <div class="ref-url">✓ ${url.replace('https://','').slice(0,40)}…</div>
+      </div>
+      <div class="ref-actions">
+        <button class="ref-btn del" onclick="removeRef('${tempId}','${name}')" title="Удалить">✕</button>
+      </div>`;
+    document.getElementById('refs-next').style.display = 'block';
+  } catch(e) {
+    document.getElementById(tempId).remove();
+    alert('Ошибка загрузки: '+e.message);
+  }
+}
+function removeRef(cardId, name) {
+  document.getElementById(cardId)?.remove();
+  state.refs = state.refs.filter(r => r.name !== name);
+  if (state.refs.length === 0) document.getElementById('refs-next').style.display = 'none';
+}
+function addRef() {
+  document.getElementById('file-input').click();
+}
+function generatePrompt() {
+  const userId = document.getElementById('user-id').value.trim();
+  if (!userId || userId.length < 3) { alert('Введи userId (минимум 3 символа)'); return; }
+  const model = document.getElementById('model-sel').value;
+  const style = document.getElementById('style-sel').value;
+  const isRift = state.provider === 'rift';
+  const baseUrl = isRift
+    ? 'https://proxy-rift-tavo.vercel.app/api/generate'
+    : 'https://linkapi-proxy-imgbb-key-cache.vercel.app/api/generate';
+
+  const charsRef = state.refs.length > 0
+    ? state.refs.map(r => `${r.name},${r.url}`).join(';')
+    : '(нет персонажей)';
+
+  // ── ПРОМТ: модель пишет [IMG]eng|rus|chars[/IMG] ──
+  const prompt = `=== IMAGE GENERATION ===
+CHARACTERS (name,link separated by ;):
+${state.refs.map(r => `${r.name}, ${r.url}`).join('\n')}
+
+HOW TO GENERATE:
+1. Analyse the last messages: who, where, action, emotion, lighting.
+2. Build the marker with THREE parts separated by | :
+   - PART 1: ONE English sentence describing the scene for the image model, using ONLY character names.
+   - PART 2: the SAME sentence in Russian (caption shown under the image).
+   - PART 3: characters in scene as name,link;name,link
+3. Output EXACTLY this line and nothing else:
+[IMG]English prompt|Русская подпись|${charsRef}[/IMG]
+
+EXAMPLE:
+[IMG]Mark and Sveta hug in a dim courtyard at night|Марк и Света обнимаются в тёмном дворе ночью|${charsRef}[/IMG]
+
+RULES:
+- Use ONLY names — never "the man", "a girl", "мужчина", "девушка".
+- EXACTLY ONE [IMG]...[/IMG] per response. No duplicates, no variations.
+- Do NOT write URLs, HTML or tags — only the marker. Everything else is automatic.`;
+
+  // ── РЕГЕКС ──
+  const dataJs = state.encryptedData.replace(/\\/g,'\\\\').replace(/"/g,'\\"');
+  const regexHtml = `<div data-img="$1" style="max-width:680px;margin:20px auto;padding:18px;background:linear-gradient(160deg,rgba(18,18,18,0.96),rgba(10,10,10,0.96));border:1px solid rgba(168,85,247,0.12);border-radius:16px;box-shadow:0 12px 32px rgba(0,0,0,0.65);">
+  <div style="position:relative;width:100%;border-radius:12px;overflow:hidden;background:#0f0a14;min-height:120px;">
+    <div class="imld" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;">
+      <div style="width:38px;height:38px;border:3px solid rgba(168,85,247,0.15);border-top-color:#a855f7;border-right-color:#ec4899;border-radius:50%;animation:imsp 0.8s linear infinite;"></div>
+      <div style="font-size:12px;color:#9d8fc4;letter-spacing:0.1em;">генерирую картинку…</div>
+    </div>
+    <style>@keyframes imsp{to{transform:rotate(360deg)}}</style>
+    <img class="imgt" style="width:100%;height:auto;display:block;border-radius:12px;opacity:0;transition:opacity 0.4s;position:relative;z-index:1;" onload="this.style.opacity=1;var l=this.parentNode.querySelector('.imld');if(l)l.style.display='none';" onerror="var l=this.parentNode.querySelector('.imld');if(l)l.innerHTML='<div style=\\'color:#ec4899;font-size:13px;text-align:center;padding:20px\\'>не загрузилось — пролистай вверх-вниз</div>';">
+  </div>
+  <div class="imdesc" style="text-align:center;color:#9d8fc4;margin-top:14px;font-style:italic;font-size:13px;"></div>
+  <div style="display:flex;gap:8px;margin-top:12px;">
+    <button class="imsave" style="flex:1;padding:9px 0;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.18);border-radius:10px;color:#c9b3f5;font-size:12px;cursor:pointer;">⬇ Открыть</button>
+    <button class="imreroll" style="flex:1;padding:9px 0;background:rgba(236,72,153,0.08);border:1px solid rgba(236,72,153,0.18);border-radius:10px;color:#f5a8d0;font-size:12px;cursor:pointer;">🔄 Реролл</button>
+  </div>
+</div>
+<` + `script>
+(function(){
+  var boxes = document.querySelectorAll('div[data-img]');
+  var box = boxes[boxes.length-1];
+  if (!box || box.dataset.imgDone) return;
+  box.dataset.imgDone = '1';
+  var raw = box.getAttribute('data-img') || '';
+  var parts = raw.split('|');
+  var engPrompt = (parts[0]||'').trim();
+  var rusCaption = (parts[1]||'').trim();
+  var charsStr = (parts[2]||'').trim();
+  if (!charsStr && parts.length===2) { charsStr = rusCaption; rusCaption = engPrompt; }
+  var chars = [];
+  if (charsStr && charsStr.indexOf('нет персонажей')<0) {
+    charsStr.split(';').forEach(function(p){
+      var i = p.lastIndexOf(',');
+      if (i>0) chars.push({name:p.slice(0,i).trim(), url:p.slice(i+1).trim()});
+    });
+  }
+  function buildUrl(bust){
+    return "${baseUrl}"
+      + '?data=' + encodeURIComponent("${dataJs}")
+      + '&characters=' + encodeURIComponent(JSON.stringify(chars))
+      + '&prompt=' + encodeURIComponent(engPrompt)
+      + '&style=${style}'
+      + '&model=${model}'
+      + '&userId=${userId}'
+      + (bust ? '&_r=' + Date.now() : '');
+  }
+  var img = box.querySelector('.imgt');
+  box.querySelector('.imdesc').textContent = rusCaption || engPrompt;
+  setTimeout(function(){ img.src = buildUrl(false); }, 50);
+  box.querySelector('.imsave').onclick = function(){ if (img.src) window.open(img.src, '_blank'); };
+  box.querySelector('.imreroll').onclick = function(){
+    var b = this; b.textContent = '⏳ ждём…';
+    var l = box.querySelector('.imld'); if (l) l.style.display = 'flex';
+    img.style.opacity = '0';
+    img.onload = function(){ img.style.opacity='1'; if(l)l.style.display='none'; b.textContent='🔄 Реролл'; };
+    img.onerror = function(){ if(l)l.style.display='none'; b.textContent='🔄 Реролл'; };
+    img.src = buildUrl(true);
+  };
+})();
+<` + `/script>`;
+
+  const regexObj = [{
+    id: crypto.randomUUID ? crypto.randomUUID() : 'img-'+Date.now(),
+    scriptName: 'ImageGen ('+(isRift?'Rift':'Link')+')',
+    findRegex: '\\[IMG\\]([\\s\\S]*?)\\[\\/IMG\\]',
+    replaceString: regexHtml,
+    trimStrings: [], placement: [2], disabled: false,
+    markdownOnly: true, promptOnly: false, runOnEdit: false,
+    substituteRegex: 0, minDepth: null, maxDepth: null
+  }];
+
+  document.getElementById('prompt-box').textContent = prompt;
+  document.getElementById('regex-box').textContent = JSON.stringify(regexObj, null, 2);
+  document.getElementById('copy-btn').style.display = 'block';
+  document.getElementById('copy-regex-btn').style.display = 'block';
+  goToStep(4);
+}
+
+function switchOut(which) {
+  const p = which === 'prompt';
+  document.getElementById('out-prompt').style.display = p ? 'block' : 'none';
+  document.getElementById('out-regex').style.display = p ? 'none' : 'block';
+  document.getElementById('tab-prompt').classList.toggle('active', p);
+  document.getElementById('tab-regex').classList.toggle('active', !p);
+}
+
+function copyRegex() {
+  const text = document.getElementById('regex-box').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copy-regex-btn');
+    btn.textContent = '✓ Скопировано!';
+    setTimeout(() => btn.textContent = '📋 Скопировать регекс', 2000);
+  });
+}
+
+function copyPrompt() {
+  const text = document.getElementById('prompt-box').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copy-btn');
+    btn.textContent = '✓ Скопировано!';
+    setTimeout(() => btn.textContent = '📋 Скопировать промт', 2000);
+  });
+}
+function goToStep(n) {
+  state.currentStep = n;
+  for (let i=1;i<=4;i++) {
+    const card = document.getElementById('card-'+i);
+    const step = document.getElementById('step-'+i);
+    if (i < n) {
+      card.style.opacity='1'; card.style.pointerEvents='auto';
+      step.className='step done';
+      step.querySelector('.step-dot').textContent='✓';
+    } else if (i === n) {
+      card.style.opacity='1'; card.style.pointerEvents='auto';
+      card.classList.add('active');
+      step.className='step active';
+      card.scrollIntoView({behavior:'smooth',block:'start'});
+    } else {
+      card.style.opacity='0.4'; card.style.pointerEvents='none';
+      card.classList.remove('active');
+      if (step.className !== 'step done') step.className='step';
+    }
+  }
+}
+function resetAll() {
+  state.encryptedData=''; state.refs=[]; state.currentStep=1;
+  document.getElementById('api-key').value='';
+  document.getElementById('imgbb-key').value='';
+  document.getElementById('enc-badge').style.display='none';
+  document.getElementById('refs-list').innerHTML='';
+  document.getElementById('refs-next').style.display='none';
+  document.getElementById('name-field').style.display='none';
+  document.getElementById('user-id').value='';
+  document.getElementById('prompt-box').textContent='Заполни шаги 1–3';
+  document.getElementById('regex-box').textContent='Заполни шаги 1–3';
+  document.getElementById('copy-btn').style.display='none';
+  document.getElementById('copy-regex-btn').style.display='none';
+  if(typeof switchOut==='function') switchOut('prompt');
+  goToStep(1);
+}
+
+// ── Модели по провайдерам (только названия) ──
+var MODELS = {
+  link: [
+    {g:'Google', items:['gemini-3.1-flash-image-preview','gemini-3-pro-image-preview','gemini-3-pro-image','gemini-2.5-flash-image','pro/gemini-3.1-flash-image-preview','pro/gemini-3-pro-image-preview','pro/gemini-2.5-flash-image']},
+    {g:'OpenAI', items:['gpt-image-2','gpt-image-2-c','gpt-image-1.5','gpt-image-1']},
+  ],
+  rift: [
+    {g:'Google', items:['gemini-3.1-flash-image-preview','gemini-3-pro-image-preview','gemini-2.5-flash-image']},
+    {g:'OpenAI', items:['gpt-image-2','gpt-image-1.5','gpt-image-1','gpt-image-1-mini']},
+  ]
+};
+function renderModels() {
+  var sel = document.getElementById('model-sel');
+  var groups = MODELS[state.provider] || MODELS.link;
+  var html = '';
+  groups.forEach(function(grp){
+    html += '<optgroup label="'+grp.g+'">';
+    grp.items.forEach(function(v){ html += '<option value="'+v+'">'+v+'</option>'; });
+    html += '</optgroup>';
+  });
+  sel.innerHTML = html;
+}
+
+// ── Стили с поиском ──
+var STYLE_GROUPS = {"Живопись": {"monet": "Моне", "manet": "Мане", "van_gogh": "Ван Гог", "serov": "Серов", "rembrandt": "Рембрандт", "repin": "Репин", "klimt": "Климт", "art_nouveau": "Модерн", "bilibin_v3": "Билибин", "hokusai": "Хокусай", "japanese_watercolor": "Японская акварель"}, "Фэнтези и хоррор": {"dark_fantasy": "Тёмное фэнтези", "classic_fantasy": "Классическое фэнтези", "horror_illustration": "Хоррор", "witch": "Ведьма", "tim_burton_2d": "Тим Бёртон 2D", "tim_burton_stopmotion": "Тим Бёртон stop-motion"}, "Кино": {"cinematic_realism": "Кинореализм", "cinematic_art": "Кино-арт", "film_noir": "Нуар", "sin_city": "Sin City", "spider_verse": "Spider-Verse", "arcane_v4": "Аркейн", "stop_motion_puppet": "Кукольный stop-motion"}, "Игры": {"oldschool_lowpoly": "Old-school low-poly", "skyrim": "Skyrim", "baldurs_gate_3": "Baldur's Gate 3", "stalker": "STALKER", "minecraft": "Minecraft", "mmo_2000s": "MMO 2000-х", "stardew_valley": "Stardew Valley", "genshin_impact": "Genshin Impact", "borderlands": "Borderlands", "point_and_click": "Point-and-click", "matt_rhodes_bioware": "BioWare", "cyberpunk_2077_photo_mode": "Cyberpunk фото", "cyberpunk_2077_screenshot": "Cyberpunk скриншот", "fallout_4_photo_mode": "Fallout 4 фото", "fallout_4_screenshot": "Fallout 4 скриншот", "gta_san_andreas": "GTA San Andreas", "vtmb_bloodlines": "Vampire Bloodlines", "league_of_legends_splash": "LoL splash"}, "Мультсериалы": {"adventure_time": "Время приключений", "star_vs_evil": "Star vs Forces of Evil", "rick_and_morty": "Рик и Морти", "steven_universe": "Вселенная Стивена", "winx_club": "Winx", "bratz": "Bratz"}, "Аниме и манга": {"anime_still": "Аниме-кадр", "visual_novel": "Визуальная новелла", "fourth_wall": "Fourth Wall", "manhwa": "Манхва", "chibi_manhwa": "Чиби-манхва", "manga_bw": "Манга ч/б", "studio_ghibli": "Studio Ghibli"}, "Графика и постеры": {"sketch": "Скетч", "linocut": "Линогравюра", "pop_art": "Поп-арт", "soviet_mosaic": "Советская мозаика", "soviet_poster": "Советский плакат", "pin_up": "Pin-up"}, "Плёночное фото": {"webcam_candid": "Вебкам", "cinestill_800t": "CineStill 800T", "kodak_portra_400": "Kodak Portra 400", "fujifilm_pro_400h": "Fujifilm Pro 400H", "fujifilm_velvia_50": "Fujifilm Velvia 50", "lomography_cross_process": "Lomography", "disposable_camera": "Одноразовая камера"}};
+var styleListOpen = false;
+function renderStyleList(filter){
+  filter = filter || '';
+  var dd = document.getElementById('style-dropdown');
+  var f = filter.toLowerCase().trim();
+  var html = '';
+  for (var cat in STYLE_GROUPS) {
+    var items = STYLE_GROUPS[cat];
+    var matched = [];
+    for (var key in items) {
+      var label = items[key];
+      if (!f || label.toLowerCase().indexOf(f)>=0 || key.toLowerCase().indexOf(f)>=0) matched.push([key,label]);
+    }
+    if (!matched.length) continue;
+    html += '<div style="padding:6px 12px;font-size:9px;text-transform:uppercase;letter-spacing:0.1em;color:var(--text3);background:var(--s1);position:sticky;top:0;">'+cat+'</div>';
+    matched.forEach(function(kv){
+      html += '<div onclick="selectStyle(\''+kv[0]+'\',\''+kv[1].replace(/'/g,"\\'")+'\')" style="padding:9px 12px;font-size:13px;color:var(--text);cursor:pointer;border-bottom:1px solid var(--border);" onmouseover="this.style.background=\'var(--purple-dim)\'" onmouseout="this.style.background=\'transparent\'">'+kv[1]+' <span style="color:var(--text3);font-size:10px;">'+kv[0]+'</span></div>';
+    });
+  }
+  if (!html) html = '<div style="padding:16px;text-align:center;color:var(--text3);font-size:12px;">ничего не найдено</div>';
+  dd.innerHTML = html;
+}
+function openStyleList(){ document.getElementById('style-dropdown').style.display='block'; styleListOpen=true; renderStyleList(); }
+function filterStyles(){ if(!styleListOpen) openStyleList(); renderStyleList(document.getElementById('style-search').value); }
+function selectStyle(key,label){
+  document.getElementById('style-sel').value=key;
+  document.getElementById('style-search').value=label;
+  document.getElementById('style-dropdown').style.display='none';
+  styleListOpen=false;
+}
+document.addEventListener('click',function(e){
+  var w=document.getElementById('style-search'), dd=document.getElementById('style-dropdown');
+  if(w&&dd&&!w.contains(e.target)&&!dd.contains(e.target)){ dd.style.display='none'; styleListOpen=false; }
+});
+document.getElementById('style-search').value='Kodak Portra 400';
+renderModels();
+
+</script>
+</body>
+</html>

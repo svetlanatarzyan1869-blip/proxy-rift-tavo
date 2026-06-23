@@ -1,4 +1,3 @@
-cat > vercel.json << 'EOF'
 {
   "functions": {
     "api/generate.js": {
@@ -6,4 +5,3 @@ cat > vercel.json << 'EOF'
     }
   }
 }
-EOF
