@@ -368,12 +368,15 @@ export default async function handler(req, res) {
     const fullPrompt = `${finalStyle}\n\n${cleanPrompt}`;
 
     // ---- Кэш и блокировка ----
+    // Реролл: если есть _r — пропускаем чтение кэша (но запишем свежий результат)
+    const isReroll = !!req.query._r;
+    if (isReroll) console.log('🔁 Реролл — кэш пропускается');
     const cacheKey = getCacheKey(userId, prompt, charactersRaw, finalStyle);
     let cachedUrl = null;
     let lockAcquired = false;
     const lockKey = `lock:${cacheKey}`;
 
-    if (redis) {
+    if (redis && !isReroll) {
       console.log('🔄 [5/9] Проверка кэша...');
       try { cachedUrl = await redis.get(cacheKey); } catch(e) { console.warn('Redis error:', e.message); }
       if (!cachedUrl) {
@@ -391,7 +394,7 @@ export default async function handler(req, res) {
       }
     }
     if (cachedUrl) return res.redirect(302, cachedUrl);
-    console.log('❌ [5/9] Кэш промах, генерация');
+    console.log(isReroll ? '🔁 [5/9] Генерация (реролл)' : '❌ [5/9] Кэш промах, генерация');
 
     const isGptImage = model.startsWith('gpt-image');
     let imageUrl;
