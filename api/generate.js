@@ -365,7 +365,14 @@ export default async function handler(req, res) {
 
     // Заменяем generic-слова на имена персонажей
     const cleanPrompt = replaceGenericWords(prompt, chars);
-    const fullPrompt = `${finalStyle}\n\n${cleanPrompt}`;
+
+    // Жёсткая инструкция: точное соответствие лиц референсам
+    let faceLock = '';
+    const named = chars.filter(c => c && c.name && c.url).map(c => c.name);
+    if (named.length > 0) {
+      faceLock = `\n\nCRITICAL FACE MATCHING: The reference images show the exact appearance of ${named.join(' and ')}. Reproduce each person's face, hair and features EXACTLY as in their reference image — same identity, do NOT invent new faces, do NOT mix features between people. Each named character must look identical to their reference.`;
+    }
+    const fullPrompt = `${finalStyle}\n\n${cleanPrompt}${faceLock}`;
 
     // ---- Кэш и блокировка ----
     // Реролл: если есть _r — пропускаем чтение кэша (но запишем свежий результат)
